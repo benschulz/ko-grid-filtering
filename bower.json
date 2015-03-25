@@ -1,0 +1,20 @@
+{
+  "name": "ko-grid-filtering",
+  "main": "dist/ko-grid-filtering.js",
+  "description": "A ko-grid extension for filtering rows.",
+  "authors": ["Ben Schulz (https://github.com/benschulz)"],
+  "license": "BSD-3-Clause",
+  "keywords": [
+    "ko-grid",
+    "filtering"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/benschulz/ko-grid-filtering.git"
+  },
+  "dependencies": {
+    "knockout": "^3.2.0",
+    "ko-grid": "benschulz/ko-grid",
+    "ko-grid-view-state-storage": "benschulz/ko-grid-view-state-storage"
+  }
+}

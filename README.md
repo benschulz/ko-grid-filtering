@@ -1,0 +1,1 @@
+A ko-grid extension for filtering rows.

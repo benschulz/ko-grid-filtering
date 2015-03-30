@@ -16,5 +16,8 @@
     "knockout": "^3.3.0",
     "ko-grid": "benschulz/ko-grid",
     "ko-grid-view-state-storage": "benschulz/ko-grid-view-state-storage"
+  },
+  "devDependencies": {
+    "stringifyable": "benschulz/stringifyable"
   }
 }

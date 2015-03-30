@@ -2,10 +2,10 @@
 
 var viewStateStorage = 'ko-grid-view-state-storage';
 
-define(['module', 'knockout', 'ko-grid', 'text!ko-grid-filtering/filtering.html.template'], function (module, ko, koGrid, filteringTemplate) {
+define(['module', 'knockout', 'stringifyable', 'ko-grid', 'text!ko-grid-filtering/filtering.html.template'], function (module, ko, stringifyable, koGrid, filteringTemplate) {
     var extensionId = module.id.indexOf('/') < 0 ? module.id : module.id.substring(0, module.id.indexOf('/'));
 
-    var TRUE = () => true;
+    var TRUE = stringifyable.predicates.alwaysTrue;
 
     koGrid.defineExtension(extensionId, {
         dependencies: [],
@@ -23,7 +23,7 @@ define(['module', 'knockout', 'ko-grid', 'text!ko-grid-filtering/filtering.html.
 
                     filters[columnId] = {
                         text: text,
-                        predicate: ko.pureComputed(() => parseFilterText(grid, column, text()))
+                        predicate: ko.pureComputed(() => parseFilterText(column, text()))
                     };
                 }
 
@@ -32,23 +32,15 @@ define(['module', 'knockout', 'ko-grid', 'text!ko-grid-filtering/filtering.html.
             this['__forColumn'] = forColumn;
 
             var rowPredicate = ko.pureComputed(() => {
-                var columnPredicates = [];
+                var columnPredicates = grid.columns.displayed()
+                    .filter(c => forColumn(c).predicate() !== TRUE)
+                    .map(c => forColumn(c).predicate().onResultOf(stringifyable.functions.propertyAccessor(c.property)));
 
-                grid.columns.displayed().forEach(function (column) {
-                    var columnPredicate = forColumn(column).predicate();
-                    if (columnPredicate !== TRUE)
-                        columnPredicates.push(row => columnPredicate(row[column.property]));
-                });
-
-                return !columnPredicates.length ? TRUE : row => {
-                    for (var i = 0; i < columnPredicates.length; ++i)
-                        if (!columnPredicates[i](row)) return false;
-                    return true;
-                };
+                return stringifyable.predicates.and(columnPredicates);
             });
 
             var throttle = !config.throttle || config.throttle.enabled !== false;
-            var throttleAmout = (config.throttle && config.throttle.by) || 150;
+            var throttleAmout = (config.throttle && config.throttle.by) || 300;
 
             var throttledRowPredicate = throttle ? rowPredicate.extend({throttle: throttleAmout}) : rowPredicate;
 
@@ -61,7 +53,10 @@ define(['module', 'knockout', 'ko-grid', 'text!ko-grid-filtering/filtering.html.
             }));
 
             var appliedSubscription = grid.data.rows.displayedSynchronized.subscribe(synchronized => {
-                applied(applied() || synchronized);
+                // TODO try to eliminate this timeout..
+                window.setTimeout(() => {
+                    applied(applied() || !grid.data.view.dirty() && synchronized);
+                }, 5);
             });
 
             this.dispose = () => {
@@ -71,33 +66,34 @@ define(['module', 'knockout', 'ko-grid', 'text!ko-grid-filtering/filtering.html.
         }
     });
 
-    function parseFilterText(grid, column, filterText) {
+    function parseFilterText(column, filterText) {
         if (!filterText.length)
             return TRUE;
 
-        return renderedValuePredicate(grid, column, filterText);
+        return renderedValuePredicate(column, filterText);
     }
 
-    function renderedValuePredicate(grid, column, filterText) {
+    function renderedValuePredicate(column, filterText) {
         var caseSensitive = filterText.toLowerCase() !== filterText;
         var prependWithAsterisk = function (s) {
             return '*' + s;
         };
 
         if (filterText.indexOf('*') >= 0)
-            return renderedValueRegExpPredicate(grid, column, filterText, caseSensitive);
+            return renderedValueRegExpPredicate(column, filterText, caseSensitive);
         else
-            return renderedValueRegExpPredicate(grid, column, '*' + filterText.replace(/([A-Z])/g, prependWithAsterisk) + '*', caseSensitive);
+            return renderedValueRegExpPredicate(column, '*' + filterText.replace(/([A-Z])/g, prependWithAsterisk) + '*', caseSensitive);
     }
 
-    function renderedValueRegExpPredicate(grid, column, filterText, caseSensitive) {
+    function renderedValueRegExpPredicate(column, filterText, caseSensitive) {
         var patternStringElements = filterText.split('*').map(escapeRegExpPatternString);
         var patternString = '^' + patternStringElements.join('.*') + '$';
         var regExp = new RegExp(patternString, caseSensitive ? '' : 'i');
 
         var renderValue = column.renderValue;
-        var valueSelector = grid.data.valueSelector;
-        return property => regExp.test(renderValue(valueSelector(property)));
+        var predicate = property => regExp.test(renderValue(property));
+
+        return stringifyable.predicates.from(predicate, () => stringifyable.predicates.regularExpression(regExp).stringifyable);
     }
 
     function escapeRegExpPatternString(patternString) {

@@ -45,22 +45,17 @@ define(['module', 'knockout', 'stringifyable', 'ko-grid', 'text!ko-grid-filterin
             var throttledRowPredicate = throttle ? rowPredicate.extend({throttle: throttleAmout}) : rowPredicate;
 
             var applied = ko.observable(true);
-            this['__applied'] = applied;
+            this['__applied'] = ko.pureComputed(() => {
+                applied(applied() || grid.data.rows.displayedSynchronized());
+                return applied() && !grid.data.view.dirty();
+            });
 
             grid.data.predicates.push(ko.pureComputed(()=> {
                 applied(false);
                 return throttledRowPredicate();
             }));
 
-            var appliedSubscription = grid.data.rows.displayedSynchronized.subscribe(synchronized => {
-                // TODO try to eliminate this timeout..
-                window.setTimeout(() => {
-                    applied(applied() || !grid.data.view.dirty() && synchronized);
-                }, 5);
-            });
-
             this.dispose = () => {
-                appliedSubscription.dispose();
                 throttledRowPredicate.dispose();
             };
         }

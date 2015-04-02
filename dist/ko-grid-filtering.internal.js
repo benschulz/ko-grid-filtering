@@ -2,7 +2,7 @@
  * Copyright (c) 2015, Ben Schulz
  * License: BSD 3-clause (http://opensource.org/licenses/BSD-3-Clause)
  */
-define(['onefold-dom', 'stringifyable', 'indexed-list', 'onefold-lists', 'onefold-js', 'ko-grid-view-state-storage', 'ko-data-source', 'ko-indexed-repeat', 'ko-grid-view-modes', 'knockout', 'ko-grid'],    function(onefold_dom, stringifyable, indexed_list, onefold_lists, onefold_js, ko_grid_view_state_storage, ko_data_source, ko_indexed_repeat, ko_grid_view_modes, knockout, ko_grid) {
+define(['onefold-dom', 'indexed-list', 'stringifyable', 'onefold-lists', 'onefold-js', 'ko-grid-view-state-storage', 'ko-data-source', 'ko-indexed-repeat', 'ko-grid-view-modes', 'knockout', 'ko-grid'],    function(onefold_dom, indexed_list, stringifyable, onefold_lists, onefold_js, ko_grid_view_state_storage, ko_data_source, ko_indexed_repeat, ko_grid_view_modes, knockout, ko_grid) {
 var text, text_ko_grid_filtering_filteringhtmltemplate, ko_grid_filtering_filtering, ko_grid_filtering;
 text = {
   load: function (id) {
@@ -50,19 +50,15 @@ ko_grid_filtering_filtering = function (module, ko, stringifyable, koGrid, filte
       var throttleAmout = config.throttle && config.throttle.by || 300;
       var throttledRowPredicate = throttle ? rowPredicate.extend({ throttle: throttleAmout }) : rowPredicate;
       var applied = ko.observable(true);
-      this['__applied'] = applied;
+      this['__applied'] = ko.pureComputed(function () {
+        applied(applied() || grid.data.rows.displayedSynchronized());
+        return applied() && !grid.data.view.dirty();
+      });
       grid.data.predicates.push(ko.pureComputed(function () {
         applied(false);
         return throttledRowPredicate();
       }));
-      var appliedSubscription = grid.data.rows.displayedSynchronized.subscribe(function (synchronized) {
-        // TODO try to eliminate this timeout..
-        window.setTimeout(function () {
-          applied(applied() || !grid.data.view.dirty() && synchronized);
-        }, 5);
-      });
       this.dispose = function () {
-        appliedSubscription.dispose();
         throttledRowPredicate.dispose();
       };
     }

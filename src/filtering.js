@@ -46,8 +46,8 @@ define(['module', 'knockout', 'stringifyable', 'ko-grid', 'text!ko-grid-filterin
 
             var applied = ko.observable(true);
             this['__applied'] = ko.pureComputed(() => {
-                applied(applied() || grid.data.rows.displayedSynchronized());
-                return applied() && !grid.data.view.dirty();
+                applied(applied() || grid.data.rows.displayedSynchronized() && !grid.data.view.dirty());
+                return applied();
             });
 
             grid.data.predicates.push(ko.pureComputed(()=> {

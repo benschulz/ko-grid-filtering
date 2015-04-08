@@ -1,6 +1,7 @@
 /* FILTERING */
 .ko-grid-filter-row {
   height: 1.33em;
+  background-color: white;
 }
 .ko-grid-filter-cell {
   position: relative;
